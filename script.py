@@ -19,6 +19,7 @@ Abbreviations :
 # MODULE DEPENDENCIES
 import requests
 import webbrowser
+import re
 from sys import exit
 
 # DEBUG UTILITIES
@@ -149,10 +150,25 @@ class JobURLUtil:
         return resObj
         # htmlFileTester('test', listPgBaseResObj.text) # Creates an HTML file from the response and displays it for debugging purposes
 
+    def jobLinkExtractor(self, htmlContent):
+        """Fetches 30 job links (as of 9 July, 2018) present on GD's job-listing page 
+
+            Params: [htmlContent ]
+            • htmlContent - HTML text content obtained from the job-listing base page
+
+            Returns:
+            • jobLinks - All parse-able job links from the HTML text content 
+        """
+        jobLinks = re.findall('https://www.glassdoor.co.in/job-listing/[a-zA-Z0-9_.,?=-]+', htmlContent)
+        for jobLink in jobLinks:
+             print(jobLink)
+        return jobLinks
+
+
 # PROGRAM COMMENCEMENT 
 def main():
     urlUtil = JobURLUtil('software', 'delhi')
     urlUtil.locationInfoExtractor()
-    print(urlUtil.jobListingPageBaseRequester().url)
+    urlUtil.jobLinkExtractor(urlUtil.jobListingPageBaseRequester().text)
 
 if __name__ == '__main__': main()
