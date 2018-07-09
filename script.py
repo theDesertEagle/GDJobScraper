@@ -14,6 +14,9 @@ Abbreviations :
 • LocT - Location Type
 • Pg - Page
 • Params - Parameters
+Notes: 
+• Any comments with "###" indicates the current area of work in the project
+• Future releases may have to rely on HTML parsers instead of Regex due to markup language's complexity
 """
 
 # MODULE DEPENDENCIES
@@ -53,10 +56,19 @@ class JobURLUtil:
         self._standardHeaders = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36'} # mimicking browser request
         self._locReqURL = 'https://www.glassdoor.co.in/util/ajax/findLocationsByFullText.htm'
         self._listPgBaseReqURL = 'https://www.glassdoor.co.in/Job/jobs.htm'
-        # Job-related Resource Initialization
+        # Company and Job-related Resource Initialization
         self._jobLinkPattern = re.compile(r'https?://www\.glassdoor\.[a-zA-Z.-]+/job-listing/[a-zA-Z0-9_.,?=-]+') # raw string
-        self._imageLinkPattern = re.compile(r'(?:https?://media\.glassdoor\.[a-zA-Z.-]+/sqls/[0-9]+/[a-zA-Z0-9-]+\.png|defLogo)') # raw string
-        #s elf._imageLinkPattern = re.compile(r'((https?://media\.glassdoor\.[a-zA-Z.-]+/sqls/[0-9]+/[a-zA-Z0-9-]+\.png)| no\.logo\.alt)') # Reference line
+        self._jobTitlePattern = re.compile(r'g(?:"|\')>([a-zA-Z\s.,\)\(\]\[\{\};:\\/-]+)</h2>') # Complex Pattern Logic: Job title is enclosed between <h2> tags where opening tag's last letter-value is 'g' {present in job-page link}
+
+        # Deprecating code soon in the following version
+        self._logoLinkPattern = re.compile(r'(?:https?://media\.glassdoor\.[a-zA-Z.-]+/sqls/[0-9]+/[a-zA-Z0-9-]+\.png|defLogo)')
+        # Failed Regex Logic for Job Title Extraction from Job-Listing Page
+        # self._jobTitlePattern = re.compile(r'"data-ajax="false">[.a-zA-Z\s-]')
+        # self._jobTitlePattern = re.compile(r'class\s?=\s?(?:"|\')jobLink(?:"|\')')#\s?[a-zA-Z0-9"\'\s.-]+>\s?[a-zA-Z0-9\s.-]+</a>')
+        # self._jobTitlePattern = re.compile(r'data-ev-a\s?=\s?(?:"|\')[a-zA-Z-]+(?:"|\')\sdata-ajax\s?=\s?(?:"|\')[a-zA-Z]+(?:"|\')>\s?[a-zA-Z0-9\s.-]+</a>')
+        # self._jobTitlePattern = re.compile(r'data-ajax\s?=\s?"[a-zA-Z]+">\s?[a-zA-Z0-9\s]+</a>')
+        # self._logoLinkPattern = re.compile(r'((https?://media\.glassdoor\.[a-zA-Z.-]+/sqls/[0-9]+/[a-zA-Z0-9-]+\.png)| no\.logo\.alt)') # Reference line
+        # self._jobTitlePattern = re.compile(r'g(?:"|\')>([a-zA-Z\s.\)\(\]\[\{\};:-]+)</h2>') # Complex Pattern Logic: Job title is enclosed between <h2> tags where opening tag's last letter-value is 'g' {present in job-page link}
 
     def _setLocInfo(self, locId, locT):
         """Set the user's location and job/profession title, as found by the location GET request
@@ -166,30 +178,48 @@ class JobURLUtil:
         """
         jobLinks = self._jobLinkPattern.findall(htmlContent)
         # jobLinks = re.findall('https?://www\.glassdoor\.[a-zA-Z.-]+/job-listing/[a-zA-Z0-9_.,?=-]+', htmlContent) # Reference Line
-        # for jobLink in jobLinks: print(jobLink) # Printing debug line
+        # for jobLink in enumerate(jobLinks): print(jobLink) # Printing debug line
         return jobLinks
 
-    def imageLinkExtractor(self, htmlContent):
-        """Fetches 30 image links (as of 9 July, 2018) present on GD's job-listing page 
+
+    def extractResourcesFromJobPage(self, url):
+        resObj = self._GETRequester(url, {}, self._standardHeaders, 'job page')
+        htmlContent = resObj.text
+        # Failed Job Title Extraction Logic: x = re.compile(r'<h2\s[>a-zA-Z\s.-=\'"]+</h2>')
+        
+        ### SUCCESSFUL TESTING  OF JOB TITLE EXTRACTION FROM ONE JOB-PAGE
+        jobTitles = self._jobTitlePattern.findall(htmlContent)  
+        print(' ')
+        for jobTitle in jobTitles: print(jobTitle) 
+        print(' ')
+
+        htmlFileTester('test', resObj.text) # Debugging Utility Line
+
+    # Deprecating Method soon in the following version
+    def logoLinkExtractor(self, htmlContent): # [tentatitive]
+        """Fetches 30 company logo links (as of 9 July, 2018) present on GD's job-listing page 
 
             Params: [htmlContent ]
             • htmlContent - HTML text content obtained from the job-listing base page
 
             Returns:
-            • jobLinks - All parse-able image links from the HTML text content 
+            • logoLinks - All parse-able logo links from the HTML text content 
         """
-        imageLinks = self._imageLinkPattern.findall(htmlContent)
-        #for imageLink in imageLinks: print(imageLink) # Printing debug line
-        return imageLinks
+        logoLinks = self._logoLinkPattern.findall(htmlContent)
+        #for logoLink in logoLinks: print(logoLink) # Printing debug line
+        return logoLinks
 
-
+    # def jobTitleExtractor(self, htmlContent):
+    #     jobTitles = self._jobTitlePattern.findall(htmlContent)
+    #     for jobTitle in enumerate(jobTitles): print(jobTitle)
 
 # PROGRAM COMMENCEMENT 
 def main():
-    urlUtil = JobURLUtil('software', 'delhi')
+    urlUtil = JobURLUtil('software', 'sydney')
     urlUtil.locationInfoExtractor()
     htmlContent = urlUtil.jobListingPageBaseRequester().text
-    urlUtil.jobLinkExtractor(htmlContent)
-    urlUtil.imageLinkExtractor(htmlContent)
+    urlUtil.extractResourcesFromJobPage(urlUtil.jobLinkExtractor(htmlContent)[15])
+    # urlUtil.logoLinkExtractor(htmlContent)
+    # urlUtil.jobTitleExtractor(htmlContent)
 
 if __name__ == '__main__': main()
