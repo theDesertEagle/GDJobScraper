@@ -38,7 +38,7 @@ class JobURLUtil:
     """
      
     def __init__(self, title, loc):
-        """Initially sets the user's location and job/profession title
+        """Initially sets basic instance info such as the user's location and job/profession title
         
            Params:
            • title - Profession/Job title to be searched, given the user
@@ -49,9 +49,14 @@ class JobURLUtil:
         
         self._title = title
         self._loc = loc
+        # URLs and Header Initialization
         self._standardHeaders = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36'} # mimicking browser request
         self._locReqURL = 'https://www.glassdoor.co.in/util/ajax/findLocationsByFullText.htm'
         self._listPgBaseReqURL = 'https://www.glassdoor.co.in/Job/jobs.htm'
+        # Job-related Resource Initialization
+        self._jobLinkPattern = re.compile(r'https?://www\.glassdoor\.[a-zA-Z.-]+/job-listing/[a-zA-Z0-9_.,?=-]+') # raw string
+        self._imageLinkPattern = re.compile(r'(?:https?://media\.glassdoor\.[a-zA-Z.-]+/sqls/[0-9]+/[a-zA-Z0-9-]+\.png|defLogo)') # raw string
+        #s elf._imageLinkPattern = re.compile(r'((https?://media\.glassdoor\.[a-zA-Z.-]+/sqls/[0-9]+/[a-zA-Z0-9-]+\.png)| no\.logo\.alt)') # Reference line
 
     def _setLocInfo(self, locId, locT):
         """Set the user's location and job/profession title, as found by the location GET request
@@ -159,16 +164,32 @@ class JobURLUtil:
             Returns:
             • jobLinks - All parse-able job links from the HTML text content 
         """
-        jobLinks = re.findall('https://www.glassdoor.co.in/job-listing/[a-zA-Z0-9_.,?=-]+', htmlContent)
-        for jobLink in jobLinks:
-             print(jobLink)
+        jobLinks = self._jobLinkPattern.findall(htmlContent)
+        # jobLinks = re.findall('https?://www\.glassdoor\.[a-zA-Z.-]+/job-listing/[a-zA-Z0-9_.,?=-]+', htmlContent) # Reference Line
+        # for jobLink in jobLinks: print(jobLink) # Printing debug line
         return jobLinks
+
+    def imageLinkExtractor(self, htmlContent):
+        """Fetches 30 image links (as of 9 July, 2018) present on GD's job-listing page 
+
+            Params: [htmlContent ]
+            • htmlContent - HTML text content obtained from the job-listing base page
+
+            Returns:
+            • jobLinks - All parse-able image links from the HTML text content 
+        """
+        imageLinks = self._imageLinkPattern.findall(htmlContent)
+        #for imageLink in imageLinks: print(imageLink) # Printing debug line
+        return imageLinks
+
 
 
 # PROGRAM COMMENCEMENT 
 def main():
     urlUtil = JobURLUtil('software', 'delhi')
     urlUtil.locationInfoExtractor()
-    urlUtil.jobLinkExtractor(urlUtil.jobListingPageBaseRequester().text)
+    htmlContent = urlUtil.jobListingPageBaseRequester().text
+    urlUtil.jobLinkExtractor(htmlContent)
+    urlUtil.imageLinkExtractor(htmlContent)
 
 if __name__ == '__main__': main()
