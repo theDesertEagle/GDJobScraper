@@ -14,9 +14,11 @@ Abbreviations :
 • LocT - Location Type
 • Pg - Page
 • Params - Parameters
+• Diff - Difference
 Notes: 
 • Any comments with "###" indicates the current area of work in the project
 • Future releases may have to rely on HTML parsers instead of Regex due to markup language's complexity
+• Lookarounds: Lookahead and Lookbehind seem to be powerful regex functionalities that will replace existing poor logic
 """
 
 # MODULE DEPENDENCIES
@@ -24,6 +26,7 @@ import requests
 import webbrowser
 import re
 from sys import exit
+
 
 # DEBUG UTILITIES
 def htmlFileTester(docName, docContent):
@@ -41,7 +44,7 @@ class JobURLUtil:
     """
      
     def __init__(self, title, loc):
-        """Initially sets basic instance info such as the user's location and job/profession title
+        """Initially sets up thebasic instance functionality and info such as the user's location and job/profession title
         
            Params:
            • title - Profession/Job title to be searched, given the user
@@ -50,24 +53,34 @@ class JobURLUtil:
            Returns: [None]   
         """
         
+        # User Input Preference Storage
         self._title = title
         self._loc = loc
+        
         # URLs and Header Initialization
         self._standardHeaders = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36'} # mimicking browser request
         self._locReqURL = 'https://www.glassdoor.co.in/util/ajax/findLocationsByFullText.htm'
         self._listPgBaseReqURL = 'https://www.glassdoor.co.in/Job/jobs.htm'
-        # Company and Job-related Resource Initialization
+        
+        # Company and Job-related Resource and Regex-Pattern Initialization/Compilation
         self._jobLinkPattern = re.compile(r'https?://www\.glassdoor\.[a-zA-Z.-]+/job-listing/[a-zA-Z0-9_.,?=-]+') # raw string
         self._logoLinkPattern = re.compile(r'(?:https?://media\.glassdoor\.[a-zA-Z.-]+/sqls/[0-9]+/[a-zA-Z0-9-]+\.png|defLogo)')
-        self._jobTitlePattern = re.compile(r'g(?:"|\')>([a-zA-Z\s.,\)\(\]\[\{\};:\\/-]+)</h2>') # Complex Pattern Logic: Job title is enclosed between <h2> tags where opening tag's last letter-value is 'g' {present in job-page link}
+        self._jobTitlePattern = re.compile(r'g(?:"|\')>([a-zA-Z\s.,&\)\(\]\[\{\};:\\/#!-]+)</h2>') # Complex Pattern Logic: Job title is enclosed between <h2> tags where opening tag's last letter-value is 'g' {present in job-page link} [UPDATE 7/10: Incorporated ampersand symbol]
         self._companyRatingPattern = re.compile(r'n>\s([0-9]+\.[0-9])+<i') # Rating lies between <span> and <i> tag
         self._jobLocationPattern = re.compile(r'ib(?:\'|")>[a-z;&-]+([a-zA-Z,\s]+)') # Removes non-breaking spaces and dash appended to the beginning of location within a <span> tag
+        self._jobPostingTimeDiffPattern = re.compile(r'\s([0-9]+)\sdays? ago')
+        self._companyNamePattern = re.compile(r'ib(?:\'|")>\s([a-zA-Z0-9./\\,_\s"\'&!;#-]+)') # Added support for /, ', [0-9] and # (because of unicode quotes, eg: Children&#039;s)
+        
+        # GD-Formatted Location Information Extraction Initialization  
+        self._locationInfoExtractor()
+
         # Failed Regex Logical Expressions 
         # self._jobLocationPattern = re.compile(r'ib(?:"|\')>([a-zA-Z]+)+</s') # 
         # self._companyRatingPattern = re.compile(r'</span>"\s?([0-9.]+)"<i') 
 
     def _setLocInfo(self, locId, locT):
         """Set the user's location and job/profession title, as found by the location GET request
+           Helper Method For: _locationInfoExtractor()
         
            Params:
            • locId - Specific Location ID set by GD for a certain geographical location name
@@ -81,6 +94,7 @@ class JobURLUtil:
 
     def _setJobListBaseInfo(self, baseJobURL):
         """Set the user's location and job/profession title, as found by the location GET request
+           Helper Method For: jobListingPageBaseRequester()
         
            Params:
            • locId - Specific Location ID set by GD for a certain geographical location name
@@ -88,7 +102,8 @@ class JobURLUtil:
     
            Returns: [None]   
         """
-        self._baseJobURL = baseJobURL
+
+        self._baseJobURL = baseJobURL # Main Base URL for finding Job Links
 
     def _GETRequester(self, url, parameters, headers, requestType):
         """Perform a specfic contextual type of GET Request with typical error handling
@@ -101,7 +116,8 @@ class JobURLUtil:
 
            Returns:
            • responseObj - Response object created from the GET request    
-        """        
+        """
+
         try:
             responseObj = requests.get(url, params=parameters, headers=headers)
         except:
@@ -110,7 +126,7 @@ class JobURLUtil:
         if responseObj.status_code != 200: return False
         return responseObj
     
-    def locationInfoExtractor(self): 
+    def _locationInfoExtractor(self): 
         """Extracts GD's required location parameters for assistance in building up the job-listing page GET request  
            (GD requires location type (locT) and location id (locId) for successful request build-up for job-list page)
 
@@ -165,24 +181,24 @@ class JobURLUtil:
 
     def jobLinkExtractor(self, htmlContent):
         """Fetches 30 job links (as of 9 July, 2018) present on GD's job-listing page 
-
             Params: [htmlContent ]
             • htmlContent - HTML text content obtained from the job-listing base page
 
             Returns:
             • jobLinks - All parse-able job links from the HTML text content 
         """
+
         jobLinks = self._jobLinkPattern.findall(htmlContent)
         # for jobLink in enumerate(jobLinks): print(jobLink) # Printing debug line
         return jobLinks
 
     def logoLinkExtractor(self, htmlContent): 
-    # [UPDATE]
-    # [Initial plan: Deprecating module, as logo extraction was supposed to be carried in 'extractResourcesFromJobPage' module]    
-    # [Module unchanged due to the complexity imposed Logo-less companies]
+        # [UPDATE]
+        # [Initial plan: Deprecating module, as logo extraction was supposed to be carried in 'jobLinkHeaderInfoExtractor' module]    
+        # [Module unchanged due to the complexity imposed Logo-less companies]
         """Fetches 30 company logo links (as of 9 July, 2018) present on GD's job-listing page 
 
-            Params: [htmlContent ]
+            Params: 
             • htmlContent - HTML text content obtained from the job-listing base page
 
             Returns:
@@ -193,30 +209,77 @@ class JobURLUtil:
         return logoLinks
 
     ### AREA OF INTEREST
-    def extractResourcesFromJobPage(self, url):
-        resObj = self._GETRequester(url, {}, self._standardHeaders, 'job page')
-        htmlContent = resObj.text
+    def jobLinkHeaderInfoExtractor(self, jobLinks, jobListPgHTMLContent):
+        """Processes 30 job links (as of 9 July, 2018) at once to collect relevant jobs' header-information 
+            Params: 
+            • jobLinks - Collection of links extracted from the job-listing page 
+            • jobListPgHTMLContent - HTML Content of Job Listing Page, for whom the job links have been extracted <to prevent GET Request repetition and delay for HTML Content> 
+
+            Returns:
+            • headerInfo - Array of dictioinaries containing each job's header information   
+        """
+        headerInfo = []
+        logoLinks = self.logoLinkExtractor(jobListPgHTMLContent)
+
+        for logoLinkIndex, jobLink in enumerate(jobLinks):
+            resObj = self._GETRequester(jobLink, {}, self._standardHeaders, 'job-page header-extraction')
+            htmlContent = resObj.text
+
+            # Future Work: Need to preprocess names and titles by removing unicodes like &amp;
+            # Company-Name Extraction
+            companyName = self._companyNamePattern.findall(htmlContent)[0]
+            # print('{} : {}'.format(companyName, jobLink)) # Debug Print Line
+            
+            # Company-Rating Extraction
+            companyRatingRes = self._companyRatingPattern.findall(htmlContent)
+            if not companyRatingRes: companyRating = -1
+            else: companyRating = companyRatingRes[0] 
+
+            # Job-Title Extraction
+            jobTitle = self._jobTitlePattern.findall(htmlContent)[0]
+
+            # Job-Location Extraction 
+            jobLocation = self._jobLocationPattern.findall(htmlContent)[0]
+
+            # Job Posting Time Difference Extraction
+            jobPostingTimeDiffRes = self._jobPostingTimeDiffPattern.findall(htmlContent)
+            if not jobPostingTimeDiffRes: jobPostingTimeDiff = 0 # Accomodating empty list values from job posted "today"
+            else: jobPostingTimeDiff = self._jobPostingTimeDiffPattern.findall(htmlContent)[0] # Two identical matches made, choose only one 
+
+            # for item in companyName: print(item) # Debugging line
+            # htmlFileTester('test', resObj.text) # Debugging Utility Line
+
+            headerInfo.append( {'companyName': companyName, 
+                               'companyRating': companyRating, 
+                               'jobTitle': jobTitle, 
+                               'jobLocation': jobLocation, 
+                               'jobPostingTimeDiff': jobPostingTimeDiff,
+                               'companyLogoURL': logoLinks[logoLinkIndex],
+                               'jobURL': jobLink})
+        return headerInfo
+
+    # Deprecating Code in Subsequent Version
+    def getAllJobLinks(self, pageNumber):
+            htmlContent = self.jobListingPageBaseRequester().text
+
+            getVitalInfoFromJobLink(self._baseJobURL)
         
-        # Job-Title Extraction
-        jobTitle = self._jobTitlePattern.findall(htmlContent)  
-
-        # Company-Rating Extraction
-        companyRating = self._companyRatingPattern.findall(htmlContent)
-
-        # Job-Location Extraction 
-        jobLocation = self._jobLocationPattern.findall(htmlContent)
-
-        for item in jobLocation: print(item) # Debugging line
-        htmlFileTester('test', resObj.text) # Debugging Utility Line
-
 
 # PROGRAM COMMENCEMENT 
-def main():
-    urlUtil = JobURLUtil('software', 'minnesota')
-    urlUtil.locationInfoExtractor()
+def main():          
+    urlUtil = JobURLUtil('software', 'california')
+    # urlUtil.locationInfoExtractor()
     htmlContent = urlUtil.jobListingPageBaseRequester().text
-    urlUtil.extractResourcesFromJobPage(urlUtil.jobLinkExtractor(htmlContent)[15])
+    # urlUtil.logoLinkExtractor(htmlContent) # Returns 30 logo links from base page
+    # urlUtil.jobLinkExtractor(htmlContent) # Returns 30 job links from base page
+    headerInfo = urlUtil.jobLinkHeaderInfoExtractor(urlUtil.jobLinkExtractor(htmlContent), htmlContent) # Returns 30 job header info from each job link 
+    print('\n|Job-Header Information On First Job-Listing Page|\n') # Debug Print Line
+    for item in headerInfo: print("{}\n".format(item)) # Debug Print Line
+
+    # Deprecating Code in Subsequent Version 
+    # print(urlUtil.getVitalInfoFromJobLink(urlUtil.jobLinkExtractor(htmlContent)[15]).values())
     # urlUtil.logoLinkExtractor(htmlContent)
+    # urlUtil.multipleJobLinkExtractor() 
     # urlUtil.jobTitleExtractor(htmlContent)
 
 if __name__ == '__main__': main()
