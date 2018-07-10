@@ -63,13 +63,14 @@ class JobURLUtil:
         self._listPgBaseReqURL = 'https://www.glassdoor.co.in/Job/jobs.htm'
         
         # Company and Job-related Resource and Regex-Pattern Initialization/Compilation
+        # [UPDATE] Support for en-dashes, em-dashes and [0-9] in job companies and titles added
         self._jobLinkPattern = re.compile(r'https?://www\.glassdoor\.[a-zA-Z.-]+/job-listing/[a-zA-Z0-9_.,?=-]+') # raw string
         self._logoLinkPattern = re.compile(r'(?:https?://media\.glassdoor\.[a-zA-Z.-]+/sqls/[0-9]+/[a-zA-Z0-9-]+\.png|defLogo)')
-        self._jobTitlePattern = re.compile(r'g(?:"|\')>([a-zA-Z\s.,&\)\(\]\[\{\};:\\/#-]+)</h2>') # Complex Pattern Logic: Job title is enclosed between <h2> tags where opening tag's last letter-value is 'g' {present in job-page link} [UPDATE 7/10: Incorporated ampersand symbol]
+        self._jobTitlePattern = re.compile(r'g(?:"|\')>([a-zA-Z0-9\s.,&\)\(\]\[\{\};:\\/#!—–-]+)</h2>') # Complex Pattern Logic: Job title is enclosed between <h2> tags where opening tag's last letter-value is 'g' {present in job-page link} [UPDATE 7/10: Incorporated ampersand symbol]
         self._companyRatingPattern = re.compile(r'n>\s([0-9]+\.[0-9])+<i') # Rating lies between <span> and <i> tag
         self._jobLocationPattern = re.compile(r'ib(?:\'|")>[a-z;&-]+([a-zA-Z,\s]+)') # Removes non-breaking spaces and dash appended to the beginning of location within a <span> tag
         self._jobPostingTimeDiffPattern = re.compile(r'\s([0-9]+)\sdays? ago')
-        self._companyNamePattern = re.compile(r'ib(?:\'|")>\s([a-zA-Z0-9./\\,_\s"\'&!;#-]+)') # Added support for /, ', [0-9] and # (because of unicode quotes, eg: Children&#039;s)
+        self._companyNamePattern = re.compile(r'ib(?:\'|")>\s([a-zA-Z0-9./\\,_\s"\'&!;#—–-]+)') # Added support for /, ', [0-9] and # (because of unicode quotes, eg: Children&#039;s)
         
         # GD-Formatted Location Information Extraction Initialization  
         self._locationInfoExtractor()
@@ -193,9 +194,6 @@ class JobURLUtil:
         return jobLinks
 
     def logoLinkExtractor(self, htmlContent): 
-        # [UPDATE]
-        # [Initial plan: Deprecating module, as logo extraction was supposed to be carried in 'jobLinkHeaderInfoExtractor' module]    
-        # [Module unchanged due to the complexity imposed Logo-less companies]
         """Fetches 30 company logo links (as of 9 July, 2018) present on GD's job-listing page 
 
             Params: 
@@ -248,6 +246,7 @@ class JobURLUtil:
                 else: jobPostingTimeDiff = self._jobPostingTimeDiffPattern.findall(htmlContent)[0] # Two identical matches made, choose only one 
 
             except Exception as error:
+                htmlFileTester('test', htmlContent)
                 print('<ERROR> Could not scrape job header info. \n......> <Further Info> {}\n......> <Line Number> {}\n......> <URL> {}'.format(error, exc_info()[-1].tb_lineno, jobLink)) # Shows with line number error wth sys.exc_info()
             # for item in companyName: print(item) # Debugging line
             # htmlFileTester('test', resObj.text) # Debugging Utility Line
@@ -270,7 +269,7 @@ class JobURLUtil:
 
 # PROGRAM COMMENCEMENT 
 def main():          
-    urlUtil = JobURLUtil('software', 'california')
+    urlUtil = JobURLUtil('software', 'egypt')
     # urlUtil.locationInfoExtractor()
     htmlContent = urlUtil.jobListingPageBaseRequester().text
     # urlUtil.logoLinkExtractor(htmlContent) # Returns 30 logo links from base page
