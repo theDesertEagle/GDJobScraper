@@ -26,7 +26,7 @@ import requests
 import webbrowser
 import re
 from sys import exit
-
+from sys import exc_info
 
 # DEBUG UTILITIES
 def htmlFileTester(docName, docContent):
@@ -65,7 +65,7 @@ class JobURLUtil:
         # Company and Job-related Resource and Regex-Pattern Initialization/Compilation
         self._jobLinkPattern = re.compile(r'https?://www\.glassdoor\.[a-zA-Z.-]+/job-listing/[a-zA-Z0-9_.,?=-]+') # raw string
         self._logoLinkPattern = re.compile(r'(?:https?://media\.glassdoor\.[a-zA-Z.-]+/sqls/[0-9]+/[a-zA-Z0-9-]+\.png|defLogo)')
-        self._jobTitlePattern = re.compile(r'g(?:"|\')>([a-zA-Z\s.,&\)\(\]\[\{\};:\\/#!-]+)</h2>') # Complex Pattern Logic: Job title is enclosed between <h2> tags where opening tag's last letter-value is 'g' {present in job-page link} [UPDATE 7/10: Incorporated ampersand symbol]
+        self._jobTitlePattern = re.compile(r'g(?:"|\')>([a-zA-Z\s.,&\)\(\]\[\{\};:\\/#-]+)</h2>') # Complex Pattern Logic: Job title is enclosed between <h2> tags where opening tag's last letter-value is 'g' {present in job-page link} [UPDATE 7/10: Incorporated ampersand symbol]
         self._companyRatingPattern = re.compile(r'n>\s([0-9]+\.[0-9])+<i') # Rating lies between <span> and <i> tag
         self._jobLocationPattern = re.compile(r'ib(?:\'|")>[a-z;&-]+([a-zA-Z,\s]+)') # Removes non-breaking spaces and dash appended to the beginning of location within a <span> tag
         self._jobPostingTimeDiffPattern = re.compile(r'\s([0-9]+)\sdays? ago')
@@ -226,26 +226,29 @@ class JobURLUtil:
             htmlContent = resObj.text
 
             # Future Work: Need to preprocess names and titles by removing unicodes like &amp;
-            # Company-Name Extraction
-            companyName = self._companyNamePattern.findall(htmlContent)[0]
-            # print('{} : {}'.format(companyName, jobLink)) # Debug Print Line
-            
-            # Company-Rating Extraction
-            companyRatingRes = self._companyRatingPattern.findall(htmlContent)
-            if not companyRatingRes: companyRating = -1
-            else: companyRating = companyRatingRes[0] 
+            try:
+                # Company-Name Extraction
+                companyName = self._companyNamePattern.findall(htmlContent)[0]
+                # print('{} : {}'.format(companyName, jobLink)) # Debug Print Line
+                
+                # Company-Rating Extraction
+                companyRatingRes = self._companyRatingPattern.findall(htmlContent)
+                if not companyRatingRes: companyRating = -1
+                else: companyRating = companyRatingRes[0] 
 
-            # Job-Title Extraction
-            jobTitle = self._jobTitlePattern.findall(htmlContent)[0]
+                # Job-Title Extraction
+                jobTitle = self._jobTitlePattern.findall(htmlContent)[0]
 
-            # Job-Location Extraction 
-            jobLocation = self._jobLocationPattern.findall(htmlContent)[0]
+                # Job-Location Extraction 
+                jobLocation = self._jobLocationPattern.findall(htmlContent)[0]
 
-            # Job Posting Time Difference Extraction
-            jobPostingTimeDiffRes = self._jobPostingTimeDiffPattern.findall(htmlContent)
-            if not jobPostingTimeDiffRes: jobPostingTimeDiff = 0 # Accomodating empty list values from job posted "today"
-            else: jobPostingTimeDiff = self._jobPostingTimeDiffPattern.findall(htmlContent)[0] # Two identical matches made, choose only one 
+                # Job Posting Time Difference Extraction
+                jobPostingTimeDiffRes = self._jobPostingTimeDiffPattern.findall(htmlContent)
+                if not jobPostingTimeDiffRes: jobPostingTimeDiff = 0 # Accomodating empty list values from job posted "today"
+                else: jobPostingTimeDiff = self._jobPostingTimeDiffPattern.findall(htmlContent)[0] # Two identical matches made, choose only one 
 
+            except Exception as error:
+                print('<ERROR> Could not scrape job header info. \n......> <Further Info> {}\n......> <Line Number> {}\n......> <URL> {}'.format(error, exc_info()[-1].tb_lineno, jobLink)) # Shows with line number error wth sys.exc_info()
             # for item in companyName: print(item) # Debugging line
             # htmlFileTester('test', resObj.text) # Debugging Utility Line
 
