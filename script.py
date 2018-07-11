@@ -93,18 +93,17 @@ class JobURLUtil:
         self._locId = locId
         self._locT = locT
 
-    def _setJobListBaseInfo(self, baseJobURL):
-        """Set the user's location and job/profession title, as found by the location GET request
+    def _setJobListBaseInfo(self, baseJobListPgURL):
+        """Sets the job-listing pages' base URL
            Helper Method For: jobListingPageBaseRequester()
         
            Params:
-           • locId - Specific Location ID set by GD for a certain geographical location name
-           • locT - Assumed Specific type of location (such as city (C), state (S), etc.) set by GD   
+           • baseJobListPgURL - Specific Location ID set by GD for a certain geographical location name
     
            Returns: [None]   
         """
 
-        self._baseJobURL = baseJobURL # Main Base URL for finding Job Links
+        self._baseJobListPgURL = baseJobListPgURL # Main Base URL for finding Job Links
 
     def _GETRequester(self, url, parameters, headers, requestType):
         """Perform a specfic contextual type of GET Request with typical error handling
@@ -260,28 +259,23 @@ class JobURLUtil:
                                'jobURL': jobLink})
         return headerInfo
 
-    # Deprecating Code in Subsequent Version
-    def getAllJobLinks(self, pageNumber):
-            htmlContent = self.jobListingPageBaseRequester().text
-
-            getVitalInfoFromJobLink(self._baseJobURL)
-        
+    def jobListingPageRetriever(self, pageNumber):
+        currentJobListPgURL = '{}{}{}{}'.format(self._baseJobListPgURL[:-4], '_IP', pageNumber, self._baseJobListPgURL[-4:]) # Assumed extension is .htm for now, but might need 'future proofing' 
+        # print('|JOB-LISTING PAGE URL CONSTRUCTED AS| {}'.format(currentJobListPgURL))
+        return self._GETRequester(currentJobListPgURL, {}, self._standardHeaders, 'job-listing page-number ({})'.format(pageNumber))        
 
 # PROGRAM COMMENCEMENT 
 def main():          
-    urlUtil = JobURLUtil('software', 'egypt')
-    # urlUtil.locationInfoExtractor()
-    htmlContent = urlUtil.jobListingPageBaseRequester().text
-    # urlUtil.logoLinkExtractor(htmlContent) # Returns 30 logo links from base page
-    # urlUtil.jobLinkExtractor(htmlContent) # Returns 30 job links from base page
-    headerInfo = urlUtil.jobLinkHeaderInfoExtractor(urlUtil.jobLinkExtractor(htmlContent), htmlContent) # Returns 30 job header info from each job link 
-    print('\n|Job-Header Information On First Job-Listing Page|\n') # Debug Print Line
-    for item in headerInfo: print("{}\n".format(item)) # Debug Print Line
+    urlUtil = JobURLUtil('software', 'minnesota')
+    resObj = urlUtil.jobListingPageBaseRequester() # Sets the job-listing page base URL
+    htmlContent, jobListingPgURL = resObj.text, resObj.url
 
-    # Deprecating Code in Subsequent Version 
-    # print(urlUtil.getVitalInfoFromJobLink(urlUtil.jobLinkExtractor(htmlContent)[15]).values())
-    # urlUtil.logoLinkExtractor(htmlContent)
-    # urlUtil.multipleJobLinkExtractor() 
-    # urlUtil.jobTitleExtractor(htmlContent)
+    for pageNumber in range(2, 4): # Display 2 pages, each consisting of 30 individual job-pages
+        print('|JOB-LISTING PAGE IN CONSIDERATION| {} '.format(jobListingPgURL))
+        jobHeadersList = urlUtil.jobLinkHeaderInfoExtractor(urlUtil.jobLinkExtractor(htmlContent), htmlContent) # Returns 30 job header info from each job link 
+        print('\n|Job-Header Information On Job-Listing Page - {}|\n'.format(pageNumber)) # Debug Print Line
+        for jobNumber, jobHeader in enumerate(jobHeadersList): print("{}: \n{}\n".format(jobNumber+1, jobHeader)) # Debug Print Line
+        resObj = urlUtil.jobListingPageRetriever(pageNumber)
+        htmlContent, jobListingPgURL = resObj.text, resObj.url
 
 if __name__ == '__main__': main()
