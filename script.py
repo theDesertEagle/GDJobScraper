@@ -63,8 +63,8 @@ class JobURLUtil:
         self._listPgBaseReqURL = 'https://www.glassdoor.co.in/Job/jobs.htm'
         
         # Company and Job-related Resource and Regex-Pattern Initialization/Compilation
-        # [UPDATE] Support for en-dashes, em-dashes and [0-9] in job companies and titles added
-        self._jobLinkPattern = re.compile(r'https?://www\.glassdoor\.[a-zA-Z.-]+/job-listing/[a-zA-Z0-9_.,?=-]+') # raw string
+        self._jobLinkPattern = re.compile(r'v><a href=(?:\'|")(/partner/jobListing[.?=&_0-9a-zA-Z]+)(?:\'|")') # raw string, extracts links susceptible to redirection => better compatibility + slower scrape-speed + partner-site redirection errors
+        # self._jobLinkPattern = re.compile(r'https?://www\.glassdoor\.[a-zA-Z.-]+/job-listing/[a-zA-Z0-9_.,?=-]+') # unfortunate deprecation as no support for multiple job-listing pages 
         self._logoLinkPattern = re.compile(r'(?:https?://media\.glassdoor\.[a-zA-Z.-]+/sqls/[0-9]+/[a-zA-Z0-9-]+\.png|defLogo)')
         self._jobTitlePattern = re.compile(r'g(?:"|\')>([a-zA-Z0-9\s.,&\)\(\]\[\{\};:\\/#!—–-]+)</h2>') # Complex Pattern Logic: Job title is enclosed between <h2> tags where opening tag's last letter-value is 'g' {present in job-page link} [UPDATE 7/10: Incorporated ampersand symbol]
         self._companyRatingPattern = re.compile(r'n>\s([0-9]+\.[0-9])+<i') # Rating lies between <span> and <i> tag
@@ -188,7 +188,8 @@ class JobURLUtil:
             • jobLinks - All parse-able job links from the HTML text content 
         """
 
-        jobLinks = self._jobLinkPattern.findall(htmlContent)
+        jobLinks = ['https://www.glassdoor.co.in'+extractedPattern for extractedPattern in self._jobLinkPattern.findall(htmlContent)]
+        print('|NUMBER OF JOB LINKS EXTRACTED| {}'.format(len(jobLinks)))
         # for jobLink in enumerate(jobLinks): print(jobLink) # Printing debug line
         return jobLinks
 
@@ -205,7 +206,6 @@ class JobURLUtil:
         #for logoLink in logoLinks: print(logoLink) # Printing debug line
         return logoLinks
 
-    ### AREA OF INTEREST
     def jobLinkHeaderInfoExtractor(self, jobLinks, jobListPgHTMLContent):
         """Processes 30 job links (as of 9 July, 2018) at once to collect relevant jobs' header-information 
             Params: 
@@ -245,36 +245,49 @@ class JobURLUtil:
                 else: jobPostingTimeDiff = self._jobPostingTimeDiffPattern.findall(htmlContent)[0] # Two identical matches made, choose only one 
 
             except Exception as error:
-                htmlFileTester('test', htmlContent)
+                # htmlFileTester('test', htmlContent) Debugging Line
                 print('<ERROR> Could not scrape job header info. \n......> <Further Info> {}\n......> <Line Number> {}\n......> <URL> {}'.format(error, exc_info()[-1].tb_lineno, jobLink)) # Shows with line number error wth sys.exc_info()
             # for item in companyName: print(item) # Debugging line
             # htmlFileTester('test', resObj.text) # Debugging Utility Line
 
-            headerInfo.append( {'companyName': companyName, 
-                               'companyRating': companyRating, 
-                               'jobTitle': jobTitle, 
-                               'jobLocation': jobLocation, 
-                               'jobPostingTimeDiff': jobPostingTimeDiff,
-                               'companyLogoURL': logoLinks[logoLinkIndex],
-                               'jobURL': jobLink})
+            try:
+                headerInfo.append( {'companyName': companyName, 
+                                   'companyRating': companyRating, 
+                                   'jobTitle': jobTitle, 
+                                   'jobLocation': jobLocation, 
+                                   'jobPostingTimeDiff': jobPostingTimeDiff,
+                                   'companyLogoURL': logoLinks[logoLinkIndex],
+                                   'jobURL': jobLink})
+            except Exception as error:
+                print('<ERROR> Could not store scraped job-header info. \n......> <Further Info> {}\n......> <Line Number> {}\n......> <URL> {}'.format(error, exc_info()[-1].tb_lineno, jobLink))
+
         return headerInfo
 
     def jobListingPageRetriever(self, pageNumber):
+        """Retrieves job-listing page info by initiating a GET Request 
+            Params: 
+            • pageNumber - Job-listing page number > 1  
+
+            Returns:
+            • Job-listing page response-object, for utilizing its properties like html content, url, etc.    
+        """
         currentJobListPgURL = '{}{}{}{}'.format(self._baseJobListPgURL[:-4], '_IP', pageNumber, self._baseJobListPgURL[-4:]) # Assumed extension is .htm for now, but might need 'future proofing' 
-        # print('|JOB-LISTING PAGE URL CONSTRUCTED AS| {}'.format(currentJobListPgURL))
+        # print('|JOB-LISTING PAGE URL CONSTRUCTED AS| {}'.format(currentJobListPgURL)) # Debugging Line
         return self._GETRequester(currentJobListPgURL, {}, self._standardHeaders, 'job-listing page-number ({})'.format(pageNumber))        
 
-# PROGRAM COMMENCEMENT 
+### PROGRAM COMMENCEMENT 
 def main():          
-    urlUtil = JobURLUtil('software', 'minnesota')
+    urlUtil = JobURLUtil('software', 'delhi')
     resObj = urlUtil.jobListingPageBaseRequester() # Sets the job-listing page base URL
     htmlContent, jobListingPgURL = resObj.text, resObj.url
 
     for pageNumber in range(2, 4): # Display 2 pages, each consisting of 30 individual job-pages
         print('|JOB-LISTING PAGE IN CONSIDERATION| {} '.format(jobListingPgURL))
         jobHeadersList = urlUtil.jobLinkHeaderInfoExtractor(urlUtil.jobLinkExtractor(htmlContent), htmlContent) # Returns 30 job header info from each job link 
+        print('\n|Job-Header Extraction Complete|\n') # Debug Print Line
         print('\n|Job-Header Information On Job-Listing Page - {}|\n'.format(pageNumber)) # Debug Print Line
         for jobNumber, jobHeader in enumerate(jobHeadersList): print("{}: \n{}\n".format(jobNumber+1, jobHeader)) # Debug Print Line
+        # htmlFileTester('test', htmlContent) # Debugging Print Line
         resObj = urlUtil.jobListingPageRetriever(pageNumber)
         htmlContent, jobListingPgURL = resObj.text, resObj.url
 
