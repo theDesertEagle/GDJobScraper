@@ -62,13 +62,36 @@ from sys import exit
 from sys import exc_info
 from datetime import datetime
 
-# DEBUG UTILITIES
+# DEBUG UTILITY FUNCTION
 def htmlFileTester(docName, docContent):
     fileName = '{}.html'.format(docName)
     fileHandler = open(fileName, 'w', encoding='utf-8')
     fileHandler.write(docContent)
     fileHandler.close()
     webbrowser.open_new_tab(fileName)
+
+# CENTRAL AND TUNABLE LOGIC-BASE FOR SCRAPING
+class ScraperLogic:
+    """Contains the main-logic and search patterns for GD scraping"""
+    def __init__(self):
+        """Sets the foundational scraper-logic object(s) for information extraction from web pages
+           Params: [None]
+    
+           Returns: [None]   
+        """
+        self.patternBase = {
+            # Applied separately using jobLinkExtractor()
+            'jobLink' : re.compile(r'v><a href=(?:\'|")/partner/jobListing([.?=&_0-9a-zA-Z]+)(?:\'|")'), 
+            # Applied separately using logoLinkExtractor()
+            'logoLink' : re.compile(r'(?:https?://media\.glassdoor\.[a-zA-Z.-]+/sqls/[0-9]+/[a-zA-Z0-9-]+\.png|defLogo)'),
+            # Applied collectively on job-pages accessible via extracted job-links [Header Information]
+            'jobTitle' : re.compile(r'(?:\'|")jobTitle(?:\'|"):(?:\'|")([\d\w\sÀ-ÿ.,&\)\(\]\[\{\};:\\/#!—–-]+)(?:\'|")'), 
+            'companyRating' : re.compile(r'(?:\'|")ratingNum(?:\'|")>([\d.]+)<'), 
+            'jobLocation' : re.compile(r'(?:\'|")loc(?:\'|"):(?:\'|")([\d\w\sÀ-ÿ.,&\)\(\]\[\{\};:\\/#!—–-]+)(?:\'|")'),   
+            'jobPostingDate' : re.compile(r'(?:\'|")datePosted(?:\'|")\svalue=(?:\'|")([0-9-]+)\s'),
+            'companyName' : re.compile(r'(?:\'|")employerName(?:\'|"):(?:\'|")([\d\w\sÀ-ÿ.,&\)\(\]\[\{\};:\\/#!—–-]+)(?:\'|")'), 
+            'companyNameAlt' : re.compile(r'(?:\'|")companyName(?:\'|")>([\d\w\sÀ-ÿ.,&\)\(\]\[\{\};:\\/#!—–-]+)<')          
+        }                
 
 # JOB-PAGES URL HANDLER CLASS
 class JobURLUtil:
@@ -102,26 +125,10 @@ class JobURLUtil:
         self._listPgBaseReqURL = 'https://www.glassdoor.co.in/Job/jobs.htm'
         
         # Company and Job-related Resource and Regex-Pattern Initialization/Compilation
-        self._jobLinkPattern = re.compile(r'v><a href=(?:\'|")/partner/jobListing([.?=&_0-9a-zA-Z]+)(?:\'|")') # raw string, extracts links susceptible to redirection => better compatibility + slower scrape-speed + partner-site redirection errors
-        self._logoLinkPattern = re.compile(r'(?:https?://media\.glassdoor\.[a-zA-Z.-]+/sqls/[0-9]+/[a-zA-Z0-9-]+\.png|defLogo)')
-        self._jobTitlePattern = re.compile(r'(?:\'|")jobTitle(?:\'|"):(?:\'|")([\d\w\sÀ-ÿ.,&\)\(\]\[\{\};:\\/#!—–-]+)(?:\'|")') # Added support for accented characters and brackets
-        self._companyRatingPattern = re.compile(r'(?:\'|")ratingNum(?:\'|")>([\d.]+)<') 
-        self._jobLocationPattern = re.compile(r'(?:\'|")loc(?:\'|"):(?:\'|")([\d\w\sÀ-ÿ.,&\)\(\]\[\{\};:\\/#!—–-]+)(?:\'|")') # Added support for accented characters and brackets  
-        self._jobPostingDatePattern = re.compile(r'(?:\'|")datePosted(?:\'|")\svalue=(?:\'|")([0-9-]+)\s')
-        # self._jobPostingTimeDiffPattern = re.compile(r'\s([0-9]+)\sdays? ago')
-        self._companyNamePattern = re.compile(r'(?:\'|")employerName(?:\'|"):(?:\'|")([\d\w\sÀ-ÿ.,&\)\(\]\[\{\};:\\/#!—–-]+)(?:\'|")') # Added support for accented characters and brackets 
-        self._companyNameAltPattern = re.compile(r'(?:\'|")companyName(?:\'|")>([\d\w\sÀ-ÿ.,&\)\(\]\[\{\};:\\/#!—–-]+)<') # Avoiding usage due to scraping HTML instead of JSON-like data 
-        
+        self._scraper = ScraperLogic()
+
         # GD-Formatted Location Information Extraction Initialization  
         self._locationInfoExtractor()
-
-        # Deprecated patterns in future releases
-        # self._jobLocationPattern = re.compile(r'ib(?:\'|")>[a-z;&-]+([a-zA-Z,\s]+)')
-        # self._companyRatingPattern = re.compile(r'n>\s([0-9]+\.[0-9])+<i') s
-        # self._jobTitlePattern = re.compile(r'g(?:"|\')>([a-zA-Z0-9\s.,&\)\(\]\[\{\};:\\/#!—–-]+)</h2>') 
-        # self._jobLinkPattern = re.compile(r'v><a href=(?:\'|")(/partner/jobListing[.?=&_0-9a-zA-Z]+)(?:\'|")') # raw string, extracts links susceptible to redirection => better compatibility + slower scrape-speed + partner-site redirection errors
-        # self._jobLinkPattern = re.compile(r'https?://www\.glassdoor\.[a-zA-Z.-]+/job-listing/[a-zA-Z0-9_.,?=-]+') 
-        # self._companyNamePattern = re.compile(r'ib(?:\'|")>\s([a-zA-Z0-9./\\,_\s"\'&!;#—–-]+)') # Deprecated in future releases
 
     @staticmethod
     def getJobPostingDateFormat():
@@ -199,8 +206,7 @@ class JobURLUtil:
 
 
         resObj =  self._GETRequester(self._locReqURL, locReqParams, self._standardHeaders, 'location')
-        if not resObj: return False
-        
+        if not resObj: return False        
 
         locResJsonObj = resObj.json() # json data extraction from response object as dictionary
         if isinstance(locResJsonObj['locations'], list):
@@ -244,18 +250,8 @@ class JobURLUtil:
             • jobLinks - All parse-able job links from the HTML text content 
         """
 
-        jobLinks = ['https://www.glassdoor.co.in/job-listing/details'+extractedPattern for extractedPattern in self._jobLinkPattern.findall(htmlContent)]
+        jobLinks = ['https://www.glassdoor.co.in/job-listing/details'+extractedPattern for extractedPattern in self._scraper.patternBase['jobLink'].findall(htmlContent)]
         print('|NUMBER OF JOB LINKS EXTRACTED| {}'.format(len(jobLinks)))
-        # for x in jobLinks:
-        #     print("\n::::::")
-        #     resObj = self._GETRequester(x, {}, self._standardHeaders, 'test')
-        #     print(resObj)
-        #     print(resObj.url)
-        #     resObj = self._GETRequester(resObj.url, {}, self._standardHeaders, 'test')
-        #     print(resObj)
-        #     print(resObj.url)
-        # exit(0)
-        # for jobLink in enumerate(jobLinks): print(jobLink) # Printing debug line
         return jobLinks
 
     def logoLinkExtractor(self, htmlContent): 
@@ -267,7 +263,7 @@ class JobURLUtil:
             Returns:
             • logoLinks - All parse-able logo links from the HTML text content 
         """
-        logoLinks = self._logoLinkPattern.findall(htmlContent)
+        logoLinks = self._scraper.patternBase['logoLink'].findall(htmlContent)
         #for logoLink in logoLinks: print(logoLink) # Printing debug line
         return logoLinks
 
@@ -284,46 +280,30 @@ class JobURLUtil:
         logoLinks = self.logoLinkExtractor(jobListPgHTMLContent)
 
         for logoLinkIndex, jobLink in enumerate(jobLinks):
-        #     headers = {
-        #     ':Authority': 'www.glassdoor.co.in',
-        #     ':Scheme': 'https',
-        #     'Accept': '*/*',
-        #     'Accept-Encoding': 'gzip, deflate, br',
-        #     'Accept-Language': 'en-US,en;q=0.9',
-        #     'Cache-Control': 'no-cache',
-        #     'Cookie': '__cfduid=d422f8ae751cc6bcb75707cef4cb0e5861530882013; gdId=5803da01-19f5-4a28-a878-df6189dfd0ee; trs=direct:direct:direct:2018-07-06+06%3A00%3A13.475:undefined:undefined; ARPNTS_AB=139; ARPNTS=1835378880.64288.0000; _ga=GA1.3.1237923810.1530882019; __qca=P0-274212888-1530884158973; G_ENABLED_IDPS=google; cto_lwid=19c7109b-cb7b-4df8-b25e-19f85b300d1b; uc=8F0D0CFA50133D96DAB3D34ABA1B873324E3F5DA1D1CA8D53F7CDB15E0E972C88D8AF602813C5C4B348C3B29B3D04FF6325FD44230E522ACB46583BD23C57828C2FBC611438D6AC5EADA5958631E5766560ECF96BB9E0E1F35CE441A9AC10EFB971FA3DEAFF5E41E8F1958EF8D718D34502F922D3BC8423EB243E7C1366FA74EB99283B525D7B8E264B898BFDEFBC49B; ARPNTS-JX=1046849728.64288.0000; JSESSIONID_JX_APP=5F6168E4A719730610C7091410C2CD7A; GSESSIONID=5F6168E4A719730610C7091410C2CD7A; JSESSIONID=1544085D25CB362656DC9CE9011F5606; _gid=GA1.3.35418599.1531328297; cass=2; _uetsid=_uet5b4962ff; _gat_UA-2595786-1=1',
-        #     'Pragma': 'no-cache',
-        #     'Referrer-Policy': 'origin',
-        #     'Referer': 'https://www.glassdoor.co.in/',
-        #     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36',
-        #     'X-Requested-With': 'XMLHttpRequest',
-        #     }
             resObj = self._GETRequester(jobLink, {}, self._standardHeaders, 'job-page header-extraction')
             htmlContent = resObj.text
 
             # Future Work: Need to preprocess names and titles by removing unicodes like &amp;
             try:
                 # Company-Name Extraction
-                companyNameRes = self._companyNamePattern.findall(htmlContent)
-                if not companyNameRes: companyName = self._companyNameAltPattern.findall(htmlContent)[0] # Use Backup Pattern
+                companyNameRes = self._scraper.patternBase['companyName'].findall(htmlContent)
+                if not companyNameRes: companyName = self._scraper.patternBase['companyNameAlt'].findall(htmlContent)[0] # Use Backup Pattern
                 else: companyName = companyNameRes[0]
                 # print('{} : {}'.format(companyName, jobLink)) # Debug Print Line
                 
                 # Company-Rating Extraction
-                companyRatingRes = self._companyRatingPattern.findall(htmlContent)
+                companyRatingRes = self._scraper.patternBase['companyRating'].findall(htmlContent)
                 if not companyRatingRes: companyRating = -1
                 else: companyRating = companyRatingRes[0] 
 
                 # Job-Title Extraction
-                jobTitle = self._jobTitlePattern.findall(htmlContent)[0]
+                jobTitle = self._scraper.patternBase['jobTitle'].findall(htmlContent)[0]
 
                 # Job-Location Extraction 
-                jobLocation = self._jobLocationPattern.findall(htmlContent)[0]
+                jobLocation = self._scraper.patternBase['jobLocation'].findall(htmlContent)[0]
 
                 # Job Posting Time Difference Extraction
-                jobPostingTimeDiff = (self._doc - datetime.strptime(self._jobPostingDatePattern.findall(htmlContent)[0], JobURLUtil.getJobPostingDateFormat())).days 
-                # if not jobPostingTimeDiffRes: jobPostingTimeDiff = 0 # Accomodating empty list values from job posted "today"
-                # else: jobPostingTimeDiff = self._jobPostingTimeDiffPattern.findall(htmlContent)[0] # Two identical matches made, choose only one 
+                jobPostingTimeDiff = (self._doc - datetime.strptime(self._scraper.patternBase['jobPostingDate'].findall(htmlContent)[0], JobURLUtil.getJobPostingDateFormat())).days 
 
             except Exception as error:
                 # htmlFileTester('test', htmlContent) # Debugging Line
@@ -359,7 +339,7 @@ class JobURLUtil:
 ### PROGRAM COMMENCEMENT 
 def main():
     doc = datetime.today().strftime(JobURLUtil.getJobPostingDateFormat())          
-    urlUtil = JobURLUtil('software', 'muscat', doc)
+    urlUtil = JobURLUtil('software', 'new castle', doc)
     resObj = urlUtil.jobListingPageBaseRequester() # Sets the job-listing page base URL
     htmlContent, jobListingPgURL = resObj.text, resObj.url
 
