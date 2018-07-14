@@ -4,53 +4,14 @@ Author: the.desert.eagle
 Project: GDJobScraper Python Script
 Purpose: Extract the technical job-required skills in the field of computer science and data science and store them in the concise manner    
 
-Abbreviations :
-• GD - GlassDoor
-• Req - Request
-• Res - Response
-• Obj - Object
-• Loc - Location
-• Doc - Date On Client-Side
-• Info - Information
-• LocID - Location Identification
-• LocT - Location Type
-• Pg - Page
-• Params - Parameters
-• Diff - Difference
-• Alt - Alternate
-
 Author's Notes: 
 • Any comments with "###" indicates the current area of work in the project
 • Future releases may have to rely on HTML parsers instead of Regex due to markup language's complexity
 • Lookarounds: Lookahead and Lookbehind seem to be powerful regex functionalities that will replace existing poor logic
-• ***MAJOR UPDATE EXPLANATION*** : 
-  Previously, I thought all job-page requests are of the following form, [giving styled job-pages]
-
-  "https://www.glassdoor.co.in/job-listing/software-development-engineer-amazon-JV_IC2921225_KO0,29_KE30,36.htm?jl=2827281589"
-  
-  with the base "/job-listing/some-profession-some-code.htm?some-args". This logic failed as soon as tried implementing 
-  the job-header extraction procedure for multiple job-listing pages, which failed to recognise the headers from the 2nd job-listing
-  page. My new logic revolved around the fact that the request was formed by the extensions embedded in the <a> tag "href" attribute, of the form:
-  
-  "https://www.glassdoor.co.in/partner/jobListing.htm?pos=102&ao=295207&s=58&guid=000001648e020dfb9562679748ae9d52&src=GD_JOB_AD&t=SR&extid=1
-  &exst=OL&ist=&ast=OL&vt=w&slr=true&rtp=0&cs=1_24d58d85&cb=1531390857391&jobListingId=2827281589"
-
-  Although this logic showed some success intially for supporting multiple job-listing pages by scraping the styled job-pages, two problems 
-  were associated with this approach:
-  > MAIN ISSUE: Some partner sites (assumed to be associated with GD to provide info for some jobs in a very ugly format) like indianfresher.com  
-                were loaded instead of GD's, making it impossible to scrape due to the provision neccesity of support for scraping for such sites    
-  > Redirections were common and slowed the scraping process
-
-  After much research on GD's http requests, it appears to be that all job-page requests are actually, of the form, 
-
+• it appears to be that all job-page requests are actually, of the form, 
   "https://www.glassdoor.co.in/job-listing/details.htm?pos=101&ao=295207&s=58&guid=000001648dea1a72a9d96e8bec675158&src=GD_JOB_AD&t=SR&extid=1
   &exst=OL&ist=&ast=OL&vt=w&slr=true&rtp=0&cs=1_83c72ca4&cb=1531389287652&jobListingId=2827281589"
-
-  which is very similar to my 2nd logic, since the query strings for both links are nearly identical, but they are slightly different on the 
-  basis of their URL parameters. Two disadvantages in this method are that, first, company's photos and page-styling is lost, but all of the relevant
-  information pertaining to the job-page is retrieved. Second, header-info regex search-patterns will need slight modifications but thankfully
-  these job-pages seem to follow a template. One big advantage is that the regex search will be performed on a relatively smaller document file with lesser text.
-  Moreover, these jobLinks have additional useful information, such as company's CEO, competitor, etc.     
+• Any used abbreviations are listed in the bottom-most docstring below the code 
 
 """
 
@@ -117,7 +78,8 @@ class JobURLUtil:
         # User Input Preference Storage
         self._title = title
         self._loc = loc
-        self._doc = datetime.strptime(doc, JobURLUtil.getJobPostingDateFormat())
+        if doc == 'SERVER_TIMING': self._doc = datetime.strptime(datetime.today().strftime(JobURLUtil.getJobPostingDateFormat()), JobURLUtil.getJobPostingDateFormat()) 
+        else: self._doc = datetime.strptime(doc, JobURLUtil.getJobPostingDateFormat())
         
         # URLs and Header Initialization
         self._standardHeaders = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36'} # mimicking browser request
@@ -338,8 +300,7 @@ class JobURLUtil:
 
 ### PROGRAM COMMENCEMENT 
 def main():
-    doc = datetime.today().strftime(JobURLUtil.getJobPostingDateFormat())          
-    urlUtil = JobURLUtil('software', 'new castle', doc)
+    urlUtil = JobURLUtil('software', 'new castle', 'SERVER_TIMING')
     resObj = urlUtil.jobListingPageBaseRequester() # Sets the job-listing page base URL
     htmlContent, jobListingPgURL = resObj.text, resObj.url
 
@@ -356,3 +317,22 @@ def main():
         htmlContent, jobListingPgURL = resObj.text, resObj.url
 
 if __name__ == '__main__': main()
+
+
+"""
+Abbreviations :
+• GD - GlassDoor
+• Req - Request
+• Res - Response
+• Obj - Object
+• Loc - Location
+• Doc - Date On Client-Side
+• Info - Information
+• LocID - Location Identification
+• LocT - Location Type
+• Pg - Page
+• Params - Parameters
+• Diff - Difference
+• Alt - Alternate
+
+"""
