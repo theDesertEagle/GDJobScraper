@@ -2,16 +2,20 @@
 """
 Author: the.desert.eagle
 Project: GDJobScraper Python Script
-Purpose: Extract the technical job-required skills in the field of computer science and data science and store them in the concise manner    
+Purpose: Scrape glassdoor to collect key data about job-postings (job description, job title, etc.)
+Motivation: Construct a dataset of job-postings from available data online
+Future Works: Extract the technical job required skills in the field of computer science and data science from the collected job data and store them in a concise manner    
 
 Author's Notes: 
 • Any comments with "###" indicates the current area of work in the project
+• The 'jobURL' HTML Page links in the output field consists of the Job Description Text 
 • Future releases may have to rely on HTML parsers instead of Regex due to markup language's complexity
-• Lookarounds: Lookahead and Lookbehind seem to be powerful regex functionalities that will replace existing poor logic
+• Lookarounds: Lookahead and Lookbehind seem to be powerful regex functionalities that will replace any existing poor logic
 • it appears to be that all job-page requests are actually, of the form, 
   "https://www.glassdoor.co.in/job-listing/details.htm?pos=101&ao=295207&s=58&guid=000001648dea1a72a9d96e8bec675158&src=GD_JOB_AD&t=SR&extid=1
   &exst=OL&ist=&ast=OL&vt=w&slr=true&rtp=0&cs=1_83c72ca4&cb=1531389287652&jobListingId=2827281589"
 • Any used abbreviations are listed in the bottom-most docstring below the code 
+• The intent of this program is for educational purposes only
 
 """
 
@@ -21,10 +25,22 @@ import webbrowser
 import re
 from sys import exit
 from sys import exc_info
+from sys import argv
 from datetime import datetime
 
-# DEBUG UTILITY FUNCTION
+# DEBUG UTILITY FUNCTION {Deprecated}
 def htmlFileTester(docName, docContent):
+    """Saves the HTML Content of job page
+       Deprecated Reason: CORS disabled by Job Website Servers
+
+       Params:
+       • title - Profession/Job title to be searched, given the user
+       • loc - Abstract Location Information based on which the jobs will be searched, given the user
+       • doc - Date on client's side 
+
+       Returns: [None]   
+    """
+
     fileName = '{}.html'.format(docName)
     fileHandler = open(fileName, 'w', encoding='utf-8')
     fileHandler.write(docContent)
@@ -201,9 +217,9 @@ class JobURLUtil:
     
         self._setJobListBaseInfo(resObj.url)        
         return resObj
-        # htmlFileTester('test', listPgBaseResObj.text) # Creates an HTML file from the response and displays it for debugging purposes
+        htmlFileTester('test', listPgBaseResObj.text) # Creates an HTML file from the response and displays it for debugging purposes
 
-    def jobLinkExtractor(self, htmlContent):
+    def jobLinkExtractor(self, htmlContent, debugPrint = False):
         """Fetches 30 job links (as of 9 July, 2018) present on GD's job-listing page 
             Params: [htmlContent ]
             • htmlContent - HTML text content obtained from the job-listing base page
@@ -213,7 +229,7 @@ class JobURLUtil:
         """
 
         jobLinks = ['https://www.glassdoor.co.in/job-listing/details'+extractedPattern for extractedPattern in self._scraper.patternBase['jobLink'].findall(htmlContent)]
-        print('|NUMBER OF JOB LINKS EXTRACTED| {}'.format(len(jobLinks)))
+        print('|NUMBER OF JOB LINKS EXTRACTED| {}'.format(len(jobLinks)), flush = True) if debugPrint else None
         return jobLinks
 
     def logoLinkExtractor(self, htmlContent): 
@@ -269,7 +285,7 @@ class JobURLUtil:
 
             except Exception as error:
                 # htmlFileTester('test', htmlContent) # Debugging Line
-                print('<ERROR> Could not scrape job header info. \n......> <Further Info> {}\n......> <Line Number> {}\n......> <URL> {}'.format(error, exc_info()[-1].tb_lineno, jobLink)) # Shows with line number error wth sys.exc_info()
+                print('<ERROR> Could not scrape job header info. \n......> <Further Info> {}\n......> <Line Number> {}\n......> <URL> {}'.format(error, exc_info()[-1].tb_lineno, jobLink), flush = True) # Shows with line number error wth sys.exc_info()
             # for item in companyName: print(item) # Debugging line
             # htmlFileTester('test', resObj.text) # Debugging Utility Line
 
@@ -282,7 +298,7 @@ class JobURLUtil:
                                    'companyLogoURL': logoLinks[logoLinkIndex],
                                    'jobURL': jobLink})
             except Exception as error:
-                print('<ERROR> Could not store scraped job-header info. \n......> <Further Info> {}\n......> <Line Number> {}\n......> <URL> {}'.format(error, exc_info()[-1].tb_lineno, jobLink))
+                print('<ERROR> Could not store scraped job-header info. \n......> <Further Info> {}\n......> <Line Number> {}\n......> <URL> {}'.format(error, exc_info()[-1].tb_lineno, jobLink), flush = True)
 
         return headerInfo
 
@@ -296,25 +312,80 @@ class JobURLUtil:
         """
         currentJobListPgURL = '{}{}{}{}'.format(self._baseJobListPgURL[:-4], '_IP', pageNumber, self._baseJobListPgURL[-4:]) # Assumed extension is .htm for now, but might need 'future proofing' 
         # print('|JOB-LISTING PAGE URL CONSTRUCTED AS| {}'.format(currentJobListPgURL)) # Debugging Line
-        return self._GETRequester(currentJobListPgURL, {}, self._standardHeaders, 'job-listing page-number ({})'.format(pageNumber))        
+        return self._GETRequester(currentJobListPgURL, {}, self._standardHeaders, 'job-listing page-number ({})'.format(pageNumber))
+
+    def batchExtract(self, resObj, batchCount = 2, debugPrint = False):        
+        """Retrieves job-listing page info by initiating a GET Request 
+            Params: 
+            • resObj - Response object containing the GD-format job-listing base page information
+            • batchCount - Number indicating how many batches of 30 job-listings are to be extracted (1 page = 30 job-listings)   
+
+            Returns:
+            • jobHeadersCollection - List of job headers scraped (a dictionary containing header values) of all of the the job postings    
+        """
+        jobHeadersCollection = []
+        htmlContent, jobListingPgURL = resObj.text, resObj.url
+
+        for pageNumber in range(2, batchCount + 2):
+            print('\n' + '-'*50 + '\n', flush = True) if pageNumber != 2 else None # Page Divider - implicitly informs the number of batches processed 
+            print('|JOB-LISTING PAGE IN CONSIDERATION| {} '.format(jobListingPgURL), flush = True) if debugPrint else None
+            jobHeadersList = self.jobLinkHeaderInfoExtractor(self.jobLinkExtractor(htmlContent, debugPrint), htmlContent) # Returns 30 job header info from each job link 
+            jobHeadersCollection += jobHeadersList 
+            
+            # Displays all of the job headers extracted 
+            if debugPrint:
+                print('|JOB-HEADER EXTRACTION COMPLETE|', flush = True) # Debug Print Lines
+                print('|JOB-HEADER INFORMATION ON JOB-LISTING PAGE - {}|\n'.format(pageNumber-1), flush = True) 
+                for jobNumber, jobHeader in enumerate(jobHeadersList):                     
+                    print('{}:)\n'.format(jobNumber+1)) 
+                    for jobHeaderName, jobHeaderValue in jobHeader.items(): print('{} : {}'.format(jobHeaderName, jobHeaderValue), flush = True)
+                    print('\n' + '*'*50 + '\n') if jobNumber != 29 else None           
+            #htmlFileTester('test', htmlContent) # Debugging Line
+            resObj = self.jobListingPageRetriever(pageNumber)
+            htmlContent, jobListingPgURL = resObj.text, resObj.url
+        print('\n' + '='*50 + '\n') if debugPrint else None   
+        print('{} Job-Posting Header Data Extracted Successfully'.format(batchCount*30), flush = True) # Debug Print Line                       
+        print('\n' + '='*50 + '\n') # Implicitly indicating that the scrapping is complete
+
+        return jobHeadersCollection 
+
+# COMMAND-LINE ARGUMENT CHECKER
+def cmdArgChecker(cmdParams):
+    """Validates commandline arguments for the program. (Created for future flexibility abd extensibility for CMD Arguments) 
+        Params: 
+        • cmdParams - List of Commandline Arguments 
+
+        Returns:
+        • JOB_POSITION, JOB_LOCATION, BATCH_SIZE - Job Position, location and Batch Size entered by the user    
+    """
+    numArgs = len(cmdParams)
+    if numArgs < 4 or numArgs > 4: 
+        print('<ERROR> 3 Arguments expected - {JOB_POSITION, JOB_LOCATION, BATCH_SIZE}')
+        exit(0)
+    else: 
+        JOB_POSITION, JOB_LOCATION, BATCH_SIZE = cmdParams[1], cmdParams[2], cmdParams[3]
+
+        # Error Handling
+        if not re.match(r'^\d+$', BATCH_SIZE): # handles any string or  negative batch size input
+            print('<ERROR> Batch Size must be a positive whole number')
+            exit(0)
+        else: 
+            BATCH_SIZE = int(BATCH_SIZE)   
+
+        print('\n' + '='*50 + '\n') # Acts like a screen output divider
+        print('Scraping Initiated For Job Listings Pertaining To: \n\t.....\t JOB POSITION: {} \n\t.....\t JOB LOCATION: {}\n\t.....\t BATCH SIZE (1 batch = 30 job-postings): {}\n'.format(cmdParams[1], cmdParams[2], cmdParams[3]))
+        print('\n' + '='*50 + '\n', flush = True) # Acts like a screen output divider
+        return JOB_POSITION, JOB_LOCATION, BATCH_SIZE
 
 ### PROGRAM COMMENCEMENT 
 def main():
-    urlUtil = JobURLUtil('software', 'new castle', 'SERVER_TIMING')
+    # Extracting and Validating command-line arguments, and then setting the base page
+    JOB_POSITION, JOB_LOCATION, BATCH_SIZE = cmdArgChecker(argv)
+    urlUtil = JobURLUtil(JOB_POSITION, JOB_LOCATION, 'SERVER_TIMING') # Creates the job scraper object
     resObj = urlUtil.jobListingPageBaseRequester() # Sets the job-listing page base URL
-    htmlContent, jobListingPgURL = resObj.text, resObj.url
 
-    for pageNumber in range(2, 4): # Display 2 pages, each consisting of 30 individual job-pages
-        print('|JOB-LISTING PAGE IN CONSIDERATION| {} '.format(jobListingPgURL))
-        jobHeadersList = urlUtil.jobLinkHeaderInfoExtractor(urlUtil.jobLinkExtractor(htmlContent), htmlContent) # Returns 30 job header info from each job link 
-        print('|JOB-HEADER EXTRACTION COMPLETE|') # Debug Print Line
-        print('|JOB-HEADER INFORMATION ON JOB-LISTING PAGE - {}|\n'.format(pageNumber-1)) # Debug Print Line
-        for jobNumber, jobHeader in enumerate(jobHeadersList): 
-            print('{}:)\n'.format(jobNumber+1)) # Debug Print Line
-            for jobHeaderName, jobHeaderValue in jobHeader.items(): print('{} : {}'.format(jobHeaderName, jobHeaderValue)) # Debug Print Line
-        # htmlFileTester('test', htmlContent) # Debugging Print Line
-        resObj = urlUtil.jobListingPageRetriever(pageNumber)
-        htmlContent, jobListingPgURL = resObj.text, resObj.url
+    # Displaying batches of 30 individual job-pages
+    jobHeaders = urlUtil.batchExtract(resObj, BATCH_SIZE, True) # Recommended Max Batch Size for Testing <= 3 (to prevent likelihood of Glassdoor API blockage in response to DOS attacks)
 
 if __name__ == '__main__': main()
 
@@ -334,5 +405,7 @@ Abbreviations :
 • Params - Parameters
 • Diff - Difference
 • Alt - Alternate
+• Cmd, CMD - Command / Commandline
+• Arg - Arguments
 
 """
