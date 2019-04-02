@@ -10,20 +10,22 @@ GDJobScraper is a **Python Regex-based Web Scraping tool** that makes the task o
 
 **Prerequisites**: You would need a version of Python installed to execute the scraper. 
 
-GDJobScraper extracts features and creates data samples in batches, where 1 batch = 30 job-postings data. For testing purposes, the recommended batch size is <= 2 (i.e, <= 60 data samples). This is a commandline-based tool which takes 3 arguments and can be run using the following format:
+GDJobScraper extracts features and creates data samples in batches, where 1 batch = 30 job-postings data. For testing purposes, the recommended batch size is <= 2 (i.e, <= 60 data samples). GDJobScraper is a commandline-based tool which takes 3 arguments and can be run using the following format:
 
 `$: python scraper.py 'JOB_TITLE' 'JOB_LOCATION' BATCH_SIZE`
 
-It is to be noted that the job title and the job location to be searched must be enclosed within quotes.
+The job title as well as the job location to be searched must be enclosed within quotes. The job title would need to match the title as it is recognized in the particular industrial domain, eg. in computer science, developers dealing with front-end web application development are commonly referred to as fron-end developers, and so a job title such as 'Front-End Developer' may be given as input. Job-postings with titles similar to the inputted job title (such as 'Front End Engineer') would be automatically handled. The job location could either be 'coarse', eg. country name, or 'finely' tuned, eg. state, depending on the type of the dataset to be generated.   
 
-## Working Example
+## Output
+
+### Alpha Build Observations
 
 ![Scraper Example - Initial Output](/images/initial_op.PNG)
 ![Scraper Example - Final Output](/images/final_op.PNG)
 
 ## Known Bugs
 
-Certain job-posting headers have weird special characters (for example, special unicode characters) which might throw errors. This error shows the job-posting page for which the header could not be parsed. Through 'exceptional handling', the scraper automatically recovers and searches for another job-posting instead.  
+Certain job-posting headers have weird special characters (for example, special unicode characters) which might throw errors. This error shows the job-posting page for which the header could not be parsed. Through 'exceptional handling' however, the scraper automatically recovers and searches for another job-posting instead.  
 
 ## Work In Progress 
 
