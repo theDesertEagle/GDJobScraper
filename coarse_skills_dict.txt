@@ -1,0 +1,94 @@
+visualization
+AI
+A.I.
+chi-squared test
+t-test
+ANOVA
+time series
+ETL
+data warehouse
+data warehousing
+NoSQL
+time management
+user experience
+product management
+classification
+regression
+boosting
+clustering
+container
+containerization
+object-oriented
+object oriented
+technical documentation
+Microsoft Office
+Office 365
+scripting
+script
+nlp
+natural language processing
+text analysis
+big data
+TF-IDF
+LSA
+LDA
+word2vec
+speech analysis
+speech analytics
+tokenization
+part-of-speech tagging
+POS
+parsing
+stemming
+CI
+CD
+Serverless
+Agile
+SOAP
+REST
+predictive analytics
+data analysis
+A/B testing
+recommender systems
+information retrieval
+graph
+statistical modeling
+neural network
+hypothesis
+resampling
+effect size
+business intelligence
+decision tree
+decision trees
+data model
+data models
+feature engineering
+data gathering
+recommendation
+random forests
+computer vision
+pca
+Bayesian modeling
+Bayesian
+causal inference methods
+causal inference
+finite mixture models
+mixture models
+mixture model
+generalized linear models
+linear models
+linear model
+joint modeling
+nonlinear mixed models
+AB tests
+AB testing
+microservices
+personalization
+collaborative filtering
+collaborative-filtering
+content-based filtering
+content based filtering
+streaming
+cloud architecture
+deep learning
+machine learning

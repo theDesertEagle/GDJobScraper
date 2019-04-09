@@ -1,0 +1,105 @@
+R
+Python
+SAS
+SPSS
+SQL
+Tableau
+Power BI
+Business Objects
+Aqua Data Studio
+DataStage
+QualityStage
+Information Analyzer
+Informatica Business Glossary
+Powercenter
+Hadoop
+Marklogic
+Cassandra
+Statistica
+MATLAB
+Java
+Scala
+Hive
+Linux
+Shiny
+Dash
+Django
+Snowflake
+Matillion
+Spark
+Excel
+Salesforce
+Marketo
+Domo
+Google Analytics
+Looker
+NLTK
+spaCy
+gensim
+Stanford CoreNLP
+CoreNLP
+NLP4J
+Jupyter
+Notebook
+Pandas
+Numpy
+Sklearn
+Plotly
+Flask
+CSV
+JSON
+Html
+Css
+Javascript
+Typescript
+React
+React.js
+SQL Server
+Oracle
+Node.js
+Nodejs
+Node
+Lambda
+Step Functions
+AWS
+Spring
+Hibernate
+Beam
+Solr
+Google Cloud Platform
+GCP
+Amazon Web Services
+Bash
+Elastic Compute Cloud 
+EC2
+Amazon Data Pipeline
+S3
+DynamoDB
+Relational Database Service
+RDS
+Elastic Map Reduce
+EMR
+Redshift
+C
+C++
+Qlikview
+CNTK
+Tensorflow
+Keras
+Scikit
+Scikit-learn
+Scikit -learn
+scikit learn
+azure
+presto
+mode analytics
+MapReduce
+Kafka
+D3
+D3.js
+Mixpanel
+Flurry
+statistical analysis
+image recognition
+data mining
+graph analytics
