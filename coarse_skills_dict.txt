@@ -92,3 +92,40 @@ streaming
 cloud architecture
 deep learning
 machine learning
+data engineering
+databases
+database
+BI
+operations research
+speech recognition
+erp
+lean six sigma
+six sigma
+relational databases
+relational database
+apis
+Api
+gpus
+gpu
+dynamic work environment
+TOGAF
+DAMA
+Support Vector Machines
+Principal Component Analysis
+Supply Chain
+Forecasting
+Analysis of Variance
+Convex Optimization
+Hypothesis Testing
+Data Structures
+Multivariate Calculus
+Linear Algebra
+Probability Theory
+Statistical Modeling
+Genetic Algorithms
+Game Theory
+predictive modeling
+iot
+ml
+dl
+Reinforcement Learning

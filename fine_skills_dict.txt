@@ -103,3 +103,70 @@ statistical analysis
 image recognition
 data mining
 graph analytics
+MLlib
+azure ml
+knime
+weka
+cuda
+sap
+spps
+powerpoint
+excel
+open cv
+opencv
+Adobe Analytics
+Azure Data Lake
+HDInsights
+SQL DW
+DocumentDB
+Search
+Elastic Pool
+ELK
+unix
+shell
+postgresql
+mysql
+Domo
+stata
+LAPack
+Gurobi
+HDFS
+MR
+Pig
+Hive
+Kibana
+Spotfire
+Hue
+Postgres
+Hive QL
+Lucene
+html5
+VB Scripting
+visual basic
+Caffe/Caffe2
+Pytorch
+Keras
+Google Cloud
+Horovod
+pig
+ggplot
+EMR
+Kinesis
+Reactive Extensions
+Spark Streaming
+Akka-streams
+RabbitMQ
+Elasticsearch
+Redis
+git
+github
+Hadoop Distributed File System
+HBase
+Sqoop
+Flume
+YARN
+Storm
+visio
+Graphite
+StatsD
+julia
